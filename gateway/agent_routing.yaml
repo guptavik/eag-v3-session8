@@ -19,7 +19,8 @@ distiller: gemini
 summariser: gemini
 critic: groq
 formatter: gemini
-retriever: github
+retriever: groq      # was github/Phi-4-mini, which cannot drive the tool-use loop (search_knowledge) — reportable bug; groq is tool-capable
 sandbox_executor: github
 coder: gemini
+translator: gemini
 browser: gemini

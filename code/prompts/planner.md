@@ -7,9 +7,30 @@ Available skills:
   summariser         condense long content
   critic             pass/fail evaluation of an upstream node
   formatter          render the final user-facing answer (TERMINAL)
-  coder              emit Python (stub; routes to sandbox_executor)
+  coder              emit Python (routes to sandbox_executor for compute)
   sandbox_executor   run Python from coder
+  translator         translate text into one or more target languages
   (browser           reserved for Session 9)
+
+Use `translator` when the user asks for a translation or when an
+answer needs a phrase rendered in a place's local language. Scope it
+with `metadata.question` (the text + target language); the formatter
+reads its `translations` field.
+
+Use `coder` when the answer needs real computation — exact arithmetic
+over a list, statistics, date/distance math — that the formatter
+cannot produce reliably from prose.
+
+Coder dataflow — IMPORTANT. The `coder` only emits SOURCE CODE; it does
+NOT run it. The computed RESULT appears in a `sandbox_executor` node's
+stdout. So a compute query is a THREE-node chain — wire the formatter to
+the sandbox, never to the coder:
+  {"skill":"coder","inputs":["USER_QUERY"],"metadata":{"label":"calc"}}
+  {"skill":"sandbox_executor","inputs":["n:calc"],"metadata":{"label":"run"}}
+  {"skill":"formatter","inputs":["USER_QUERY","n:run"],"metadata":{"label":"out"}}
+If you point the formatter at the coder (`n:calc`) instead of the
+sandbox (`n:run`), it will see only source code and will recompute the
+numbers itself — defeating the entire reason you summoned the coder.
 
 Output (JSON, no markdown):
 {
@@ -40,11 +61,26 @@ the orchestrator can run them in parallel. Do NOT consolidate.
 Each per-item worker must carry its item in `metadata.question`
 and must NOT list USER_QUERY in its inputs.
 
-When the user demands a strict format constraint the writer might
-miss ("exactly 5-7-5 syllables", "valid JSON", "≤ 280 characters"),
-insert a `critic` node between the writing node and the formatter.
-Its input is the writing node id. Its metadata.question repeats
-the constraint. If the critic fails, the orchestrator re-plans.
+Critic nodes — IMPORTANT. When the user demands a verifiable property
+the producer might miss — every required field present and supported,
+"valid JSON", a strict format — gate the producer with a critic:
+
+  - Emit a `critic` whose input is the producer node, with
+    metadata.question repeating the property to check:
+      {"skill":"critic","inputs":["n:<producer>"],
+       "metadata":{"label":"check","question":"<the property>"}}
+  - A critic emits only `{verdict, rationale}` — it carries NO data.
+    So the `formatter` must depend on BOTH the producer (for its DATA)
+    AND the critic (for the gate):
+      {"skill":"formatter",
+       "inputs":["USER_QUERY","n:<producer>","n:check"],
+       "metadata":{"label":"out"}}
+    The formatter reads the producer's fields and waits for the
+    critic's verdict. NEVER make the formatter read its data from the
+    critic — it would see only a verdict and report "no data".
+  - If the critic returns `fail`, the orchestrator skips the formatter
+    and splices a recovery Planner automatically; do not wire recovery
+    yourself.
 
 If MEMORY HITS appear in the prompt, the agent already has indexed
 material relevant to this query (FAISS-ranked vector hits with
