@@ -17,7 +17,7 @@ per-node JSON, fully reconstructible offline).
 
 | Part | Deliverable | Files touched |
 |------|-------------|---------------|
-| 4 | **Coder skill** — real prompt emitting stdlib Python for the sandbox | [`code/prompts/coder.md`](code/prompts/coder.md) |
+| 4 | **Coder skill** — real prompt emitting `{code, summary}`: stdlib Python for the sandbox + a plain-English result the Formatter quotes | [`code/prompts/coder.md`](code/prompts/coder.md), [`code/prompts/formatter.md`](code/prompts/formatter.md) |
 | 5 | **New skill: `translator`** — yaml entry + prompt + planner awareness | [`code/agent_config.yaml`](code/agent_config.yaml), [`code/prompts/translator.md`](code/prompts/translator.md), [`gateway/agent_routing.yaml`](gateway/agent_routing.yaml) |
 | 3 | Planner-prompt fixes so a Critic gate wires correctly | [`code/prompts/planner.md`](code/prompts/planner.md) |
 
@@ -156,32 +156,40 @@ into the structured record the Critic accepts → corrected final answer.
 
 ---
 
-## Part 4 — Coder: computation the Formatter can't do from text
+## Part 4 — Coder: the trust-and-verify diamond
 
-> `Given these three city populations — Tokyo 37,400,068; Delhi 32,900,000; Cairo 22,100,000 — compute the exact mean, the population standard deviation, and which city is furthest from the mean.`
+Canonical flagship query (also the parallel-fan-out + coder example from
+the brief's deep-dive):
 
-The Coder emits stdlib Python (`statistics`), the SandboxExecutor runs it
-and prints one JSON line, the Formatter lifts it. This is a clean
-**before/after** that proves the assignment's premise
-([P4_before_after.txt](logs/P4_before_after.txt)):
+> `Find the populations of London, Paris, Berlin and tell me which two are closest in size.`
 
-| run | formatter reads | reported σ | correct? |
-|-----|-----------------|-----------|----------|
-| `s8-fb5b67f3` (before) | the **coder** (source code) | 6,432,040 | ❌ formatter recomputed by hand, **wrong** |
-| `s8-e91fabb8` (after) | the **sandbox** (executed result) | **6,420,303.67** | ✅ matches sandbox stdout |
-
-Final (correct) run — [P4_coder.log](logs/P4_coder.log) · sid `s8-e91fabb8`:
+This requires **precise multi-digit subtraction across pairs** — exactly
+what an LLM Formatter can't do reliably from text. The Coder emits
+`{code, summary}`; the orchestrator then runs the **diamond** described in
+the brief — Coder's two children fire concurrently:
 
 ```
-planner → coder(n:2) → sandbox_executor(n:3) → formatter(n:4 reads n:3)
-sandbox stdout: {"mean":30800022.67,"population_stdev":6420303.67,
-                 "furthest_from_mean":{"city":"Cairo","distance":8700022.67}}
-FINAL: mean 30,800,022.67 · σ 6,420,303.67 · Cairo furthest
+planner → 3× researcher (parallel) → coder(n:5) ─┬─→ formatter(n:6)        [reads coder.summary]
+                                                  └─→ sandbox_executor(n:7) [runs coder.code]
 ```
 
-The before-run shows the Formatter getting the standard deviation
-**wrong** when it only sees code — exactly the failure the Coder exists
-to prevent.
+Log [P4_populations.log](logs/P4_populations.log) · sid `s8-28ae1262` ·
+timing [P4_populations_timing.txt](logs/P4_populations_timing.txt) (7
+nodes; researcher span 44.2 s = max branch vs sum 122.1 s).
+
+**Trust and verify agree to the unit:**
+
+| branch | reads | produces |
+|--------|-------|----------|
+| Formatter (trust) | coder **`summary`** | "Berlin and Paris … difference of **1,804,440**" — the user-facing answer |
+| SandboxExecutor (verify) | coder **`code`** | stdout `{"closest_pair":"Paris-Berlin","difference":1804440,...}` |
+
+The Formatter quotes the LLM's `summary`; the SandboxExecutor independently
+runs the Python and lands the **same integer (1804440)**, logged to its
+node state. One architecture grounds the precise arithmetic claim in real
+execution; that grounding is the point of the Coder. No double sandbox —
+the auto-attached `sandbox_executor` is the coder's single
+`internal_successor`, running concurrently with the Formatter.
 
 ---
 
@@ -232,17 +240,7 @@ the "skills are yaml + prompts" contract.
    but the provider should fail over instead of raising. `retriever` was
    re-pinned `github → groq` (config only) to reduce the hit rate.
 
-2. **Double `sandbox_executor` on the explicit compute chain.** Because
-   `coder` has a static `internal_successors: [sandbox_executor]`, when
-   the Planner *also* emits an explicit sandbox node (needed so the
-   Formatter can reference the executed result), the code runs twice — one
-   feeds the Formatter, one is a redundant leaf (idempotent, ~0 s). The
-   root cause is that the auto-appended sandbox node is unnameable by the
-   Planner, so the executed result can't otherwise reach the Formatter. A
-   cleaner design would let the Planner reference the auto-appended node,
-   or skip the internal successor when the Planner wires its own.
-
-3. **Windows:** the orchestrator prints box-drawing characters; run with
+2. **Windows:** the orchestrator prints box-drawing characters; run with
    `PYTHONUTF8=1` (cp1252 console otherwise errors). Harmless asyncio
    proactor-transport `ResourceWarning`s print to stderr at interpreter
    shutdown after MCP subprocess use — cosmetic, captured to `.err` files.

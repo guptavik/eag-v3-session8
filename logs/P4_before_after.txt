@@ -1,5 +1,0 @@
-=== P4 BEFORE (s8-fb5b67f3): formatter read CODER ===
-  n:1 planner inputs= ['USER_QUERY'] 
-  n:2 coder inputs= ['USER_QUERY'] 
-  n:3 formatter inputs= ['USER_QUERY', 'n:2']  answer-stdev=6432040(WRONG, recomputed)
-  n:4 sandbox_executor inputs= ['n:2']  stdout-stdev=6420303.67(correct)

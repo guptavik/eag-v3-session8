@@ -54,17 +54,21 @@ Property the Critic can verify **by reading** (structural completeness /
 support against source — the cases the codebase documents as reliable):
 
 ```
-Summarise Kyoto as a record with exactly these fields: country, population, founded_year, sister_cities. All four fields are required.
+Summarise Lyon, France as a record with exactly these required fields: country, population, founded_year, and sister_cities. All four fields are required and must be supported by the source.
 ```
 
-The Distiller is `critic:true`, so the orchestrator auto-inserts a Critic
-between Distiller and Formatter.
+The Planner emits a `critic` reading the producer (distiller) and wires
+the formatter to depend on BOTH the producer (data) and the critic
+(gate): `formatter.inputs = [USER_QUERY, n:<producer>, n:<critic>]`. This
+is the planner-emitted critic path (one of the two paths pinned by
+`tests/test_recovery.py`; the other is the distiller auto-insert).
 
-- **PASS run:** upstream findings contain all four fields → Distiller
-  fills them → Critic reads, every field supported → `pass` → Formatter.
-- **FAIL run:** when a required field is unsupported/missing in the
-  Distiller output, the Critic emits `fail` → orchestrator splices a
-  recovery Planner (capped at one re-plan/branch) → corrected answer.
+- **PASS run:** distiller fills all four fields → Critic reads, every
+  field supported → `pass` → Formatter quotes the record.
+- **FAIL run (same query):** when a required field is unsupported/missing
+  → Critic emits `fail` → orchestrator marks the formatter `skipped` and
+  splices a recovery Planner (capped at one re-plan/branch) → the recovery
+  adds a distiller path the Critic accepts → corrected answer.
 
 Capture both traces. The fail trace must show the `critic-fail recovery:
 planner node …` line and a corrected final answer.
@@ -76,17 +80,19 @@ planner node …` line and a corrected final answer.
 
 ---
 
-## Part 4 — Coder (computation the Formatter can't do from text)
+## Part 4 — Coder: the trust-and-verify diamond
 
 ```
-Here are three city populations — Tokyo 37,400,068; Delhi 32,900,000; Cairo 22,100,000. Compute the mean, the population standard deviation, and which city is furthest from the mean.
+Find the populations of London, Paris, Berlin and tell me which two are closest in size.
 ```
 
-Planner emits a `coder`; the orchestrator auto-runs `sandbox_executor`
-on its Python. The program embeds the three numbers as literals, computes
-`statistics.mean` / `pstdev` and the argmax of `abs(pop-mean)`, and prints
-one JSON line the Formatter lifts. Exact stdev over a list is precisely
-what an LLM Formatter cannot produce reliably from prose.
+The Coder emits `{code, summary}`. The diamond fires: Coder → Formatter
+(reads `summary`, the user-facing answer) **and** Coder → SandboxExecutor
+(auto-attached `internal_successor`, runs `code` to verify) — both
+concurrent. The Formatter quotes the computed difference; the sandbox
+independently prints the same integer. Precise multi-digit subtraction is
+what an LLM Formatter cannot do reliably from prose; the coder grounds it
+in real execution.
 
 ---
 

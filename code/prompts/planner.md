@@ -18,19 +18,20 @@ with `metadata.question` (the text + target language); the formatter
 reads its `translations` field.
 
 Use `coder` when the answer needs real computation — exact arithmetic
-over a list, statistics, date/distance math — that the formatter
-cannot produce reliably from prose.
+over a list, multi-digit subtraction/comparison, statistics, date or
+distance math — that the formatter cannot produce reliably from prose.
 
-Coder dataflow — IMPORTANT. The `coder` only emits SOURCE CODE; it does
-NOT run it. The computed RESULT appears in a `sandbox_executor` node's
-stdout. So a compute query is a THREE-node chain — wire the formatter to
-the sandbox, never to the coder:
+Coder dataflow — the diamond. The `coder` emits `{code, summary}`. You
+do NOT emit a `sandbox_executor`; the orchestrator attaches one
+automatically as the coder's successor (it runs the `code` and verifies).
+You just emit the coder and a formatter that reads the coder:
   {"skill":"coder","inputs":["USER_QUERY"],"metadata":{"label":"calc"}}
-  {"skill":"sandbox_executor","inputs":["n:calc"],"metadata":{"label":"run"}}
-  {"skill":"formatter","inputs":["USER_QUERY","n:run"],"metadata":{"label":"out"}}
-If you point the formatter at the coder (`n:calc`) instead of the
-sandbox (`n:run`), it will see only source code and will recompute the
-numbers itself — defeating the entire reason you summoned the coder.
+  {"skill":"formatter","inputs":["USER_QUERY","n:calc"],"metadata":{"label":"out"}}
+The formatter reads the coder's `summary` (which already states the
+computed figure); the auto-attached sandbox independently runs the
+`code` and logs the same number. Both children run concurrently after
+the coder — that is the trust-and-verify diamond. Do NOT add your own
+sandbox_executor node; it is automatic.
 
 Output (JSON, no markdown):
 {
