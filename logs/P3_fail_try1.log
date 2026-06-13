@@ -1,0 +1,30 @@
+
+══════════════════════════════════════════════════════════════════════════════
+session s8-771333eb  ─  query: Summarise Lyon, France as a record with exactly these required fields: country, population, founded_year, and sister_cities. All four fields are required and must be supported by the source.
+══════════════════════════════════════════════════════════════════════════════
+[memory.read] 8 hit(s) visible to every skill this run
+[n:1] planner            complete (3.8s)
+[n:2] retriever          failed   (0.0s)  err=exception: ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  ↪ recovery (upstream_failure): planner node n:6 queued for n:2
+[n:6] planner            complete (3.6s)
+[n:7] researcher         complete (21.5s)
+[n:8] critic             complete (2.9s)
+  ↪ critic-fail recovery: planner node n:10 for n:7
+[n:10] planner            complete (3.5s)
+[n:11] researcher         complete (13.1s)
+[n:12] critic             complete (3.1s)
+  ↪ critic-fail recovery: planner node n:14 for n:11
+[n:14] planner            complete (3.9s)
+[n:15] researcher         complete (20.6s)
+[n:16] distiller          complete (3.5s)
+[n:17] critic             complete (3.1s)
+[n:18] formatter          complete (3.0s)
+
+══════════════════════════════════════════════════════════════════════════════
+FINAL: Record for Lyon, France:
+- Country: France
+- Population: in excess of 1.7 million
+- Founded Year: 43 BC
+- Sister Cities: Saint Louis, Montreal, Frankfurt, Milan, and Yokohama
+══════════════════════════════════════════════════════════════════════════════
+

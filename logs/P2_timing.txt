@@ -1,0 +1,10 @@
+node   skill          start     end    dur
+n:1    planner          0.0     4.5    4.5
+n:2    researcher      12.8    45.6   32.8
+n:3    researcher       4.7    45.6   40.9
+n:4    researcher      17.2    45.6   28.5
+n:5    formatter       45.6    49.0    3.4
+
+researcher layer: wall-clock span=40.9s  sum-of-branches=102.2s
+parallel verdict: span(40.9) ~= max branch(40.9), NOT sum(102.2) -> saved 61.3s
+end-to-end wall-clock: 49.0s

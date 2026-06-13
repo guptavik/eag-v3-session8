@@ -1,0 +1,10 @@
+node   skill              start     end    dur
+n:1    planner              0.0     3.9    3.9
+n:4    researcher           4.1    48.3   44.2
+n:2    researcher           7.4    48.3   40.9
+n:3    researcher          11.4    48.3   37.0
+n:5    coder               48.3    53.1    4.8
+n:6    formatter           53.1    56.4    3.3
+n:7    sandbox_executor    56.4    56.4    0.0
+researcher layer: span=44.2s == max branch, vs sum=122.1s -> saved 77.8s
+end-to-end wall-clock: 56.4s

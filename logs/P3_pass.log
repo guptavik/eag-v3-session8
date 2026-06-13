@@ -1,0 +1,20 @@
+
+══════════════════════════════════════════════════════════════════════════════
+session s8-95fc1978  ─  query: Summarise Lyon, France as a record with exactly these required fields: country, population, founded_year, and sister_cities. All four fields are required and must be supported by the source.
+══════════════════════════════════════════════════════════════════════════════
+[memory.read] 8 hit(s) visible to every skill this run
+[n:1] planner            complete (4.0s)
+[n:2] researcher         complete (19.1s)
+[n:3] distiller          complete (3.8s)
+[n:4] critic             complete (3.1s)
+[n:5] formatter          complete (3.2s)
+
+══════════════════════════════════════════════════════════════════════════════
+FINAL: Here is the summary record for Lyon, France:
+
+- Country: France
+- Population: 519,127 (city); 1.4 million (metropolis)
+- Founded Year: 43 BC
+- Sister Cities: St. Louis, Frankfurt, Milan, Yokohama, Birmingham, and Guangzhou
+══════════════════════════════════════════════════════════════════════════════
+

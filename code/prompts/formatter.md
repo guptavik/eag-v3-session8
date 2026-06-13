@@ -25,3 +25,7 @@ Rules:
     to the user rather than inventing.
   - Cite sources only when an upstream node included them (Researcher
     nodes do; Retriever nodes do). Do not invent URLs.
+  - When an upstream node is a `coder`, read its `summary` field (the
+    plain-English result) and quote that figure. Ignore the `code`
+    field — it is source text, not the answer, and a parallel
+    SandboxExecutor has already run it.
