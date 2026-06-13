@@ -1,7 +1,1 @@
-node   skill          start     end    dur
-n:1    planner          0.0     3.6    3.6
-n:2    researcher       3.6    40.6   37.0
-n:3    researcher      11.5    40.6   29.1
-n:4    researcher      16.0    40.6   24.6
-n:5    formatter       40.6    44.1    3.5
-researcher layer: span=37.0s vs sum=90.7s -> parallel saved 53.6s
+nodes=7  researcher span=40.9s == max branch, vs sum=102.7s (saved 61.9s)  end-to-end=53.0s

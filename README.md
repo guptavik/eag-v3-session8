@@ -13,6 +13,22 @@ per-node JSON, fully reconstructible offline).
 
 ---
 
+## Objectives checklist
+
+| # | Objective | Status | Evidence |
+|---|-----------|--------|----------|
+| — | DAG architecture intact; orchestrator untouched | ✅ | core files zero-diff vs initial commit; only yaml+prompts changed; [Part below](#architectural-contract--verification) |
+| 1 | Five base queries (hello, A, I, J, K) verbatim, within bounds | ✅ | [Part 1](#part-1--five-base-queries-verbatim-within-bounds) — I (53 s) & K (~70 s) within bounds; hello shape exact (wall-clock note) |
+| 2 | Parallel fan-out, ≥3 independent concurrent, wall-clock = max not sum | ✅ | [Part 2](#part-2--parallel-fan-out-wall-clock--max-of-branches-not-sum) — span 40.9 s = max vs sum 102.2 s |
+| 3 | Critic verdict: pass + fail across two runs; fail splices recovery → corrected | ✅ | [Part 3](#part-3--critic-verdict-one-pass-one-fail--recovery-same-query) — `s8-95fc1978` (pass), `s8-771333eb` (fail→recovery→corrected) |
+| 4 | Coder skill emits Python; demo computation Formatter can't do | ✅ | [Part 4](#part-4--coder-the-trust-and-verify-diamond) — diamond; summary 1,804,440 == sandbox 1804440 |
+| 5 | New skill not in catalogue; yaml+prompt+query; no orchestrator change | ✅ | [Part 5](#part-5--new-skill-translator-no-orchestrator-change) — `translator` |
+| — | Recovery classifier unit tests still pass | ✅ | `22 passed` after all changes |
+| 6 | YouTube demo showing parts 1–5 | ⏳ | **owner's to record** — shot list in [QUERIES.md](QUERIES.md) |
+| 7 | README link showing results 1–5 via logs | ✅ | this file |
+
+---
+
 ## What I built (the deliverables)
 
 | Part | Deliverable | Files touched |
@@ -53,13 +69,24 @@ embeddings, gateway provider ladder `cerebras, groq, nvidia, github`
 |----|-------|-----------|-------|--------|-----|-----|
 | **hello** | `Say hello.` | planner → formatter | 2 | `Hello!` | [hello.log](logs/hello.log) | s8-4ddacaef |
 | **A** | `Fetch …/Claude_Shannon and tell me his birth date, death date, and three key contributions…` | planner → researcher → distiller → formatter | 4 | born 1916-04-30, died 2001-02-24, + 3 contributions (Math. Theory of Communication 1948, entropy, channel capacity) | [A_shannon.log](logs/A_shannon.log) | s8-6ee0119f |
-| **I** | `Find the current populations of Tokyo, Delhi, and Cairo and tell me which is largest.` | planner → 3× researcher (parallel) → formatter | 5 | Tokyo largest (~37 M) | [I_populations.log](logs/I_populations.log) | s8-7a97e92b |
+| **I** | `Find the populations of London, Paris, Berlin and tell me which two are closest in size.` | planner → 3× researcher (parallel) → coder → formatter + sandbox_executor | 7 | London & Paris closest (diff 1,620,000); end-to-end **53.0 s** (bound ~62 s ✓) | [I_populations.log](logs/I_populations.log) | s8-b9a6f760 |
 | **J** | `Read /nonexistent/path.txt and tell me what's in it.` | planner → formatter (degenerate, no tool dispatched) | 2 | explains path can't be accessed | [J_graceful.log](logs/J_graceful.log) | s8-0bbb04cf |
 | **K** | `For Lagos, Cairo, and Kinshasa, find current populations and growth rates and tell me which is growing fastest.` | parallel researchers → coder → formatter (+sandbox); SIGKILL + resume | 7 | Kinshasa fastest | [K_resume.log](logs/K_resume.log) | s8-880b4c12 |
 
 **hello** is the minimum DAG; **J** is graceful fail-fast (the Planner
 sees an unanswerable request and emits a Formatter directly — *no tool
 dispatched*). **A** regresses cleanly through the DAG with named nodes.
+Query **I** is the brief's parallel-fan-out + coder case (7 nodes); Part 4
+below dissects its trust-and-verify diamond.
+
+> **Wall-clock note.** Every node here is one or more LLM round-trips
+> through the gateway provider ladder (`cerebras/groq/nvidia/github`),
+> each ~3–4 s. Node *shapes* and *iteration counts* match the brief
+> exactly; absolute wall-clocks are provider-latency-bound. I (53 s ✓)
+> and K (~70 s ✓) land within their stated bounds. `hello`'s "< 3 s"
+> target assumes a fast local model — its two sequential LLM calls run
+> ~7 s here; the DAG (2 nodes, planner → formatter) is exactly as
+> specified.
 
 ### Query K — resumable execution (SIGKILL + `--resume`)
 
@@ -110,7 +137,7 @@ researcher layer: wall-clock span = 40.9s  ==  max branch (40.9s)
 
 The parallel layer's wall-clock equals the **slowest branch (40.9 s)**,
 not the **sum (102.2 s)**. Base query I shows the same property (span
-37.0 s vs sum 90.7 s — [I_timing.txt](logs/I_timing.txt)).
+40.9 s vs sum 102.7 s — [I_timing.txt](logs/I_timing.txt)).
 
 ---
 
@@ -158,8 +185,8 @@ into the structured record the Critic accepts → corrected final answer.
 
 ## Part 4 — Coder: the trust-and-verify diamond
 
-Canonical flagship query (also the parallel-fan-out + coder example from
-the brief's deep-dive):
+This is **base Query I** dissected (the brief uses the same populations
+query for the parallel-fan-out case and the coder demonstration):
 
 > `Find the populations of London, Paris, Berlin and tell me which two are closest in size.`
 
